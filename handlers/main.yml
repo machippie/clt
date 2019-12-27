@@ -1,7 +1,0 @@
----
-- name: Cleanup clt
-  file:
-    path: /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
-    state: absent
-
-...
