@@ -72,4 +72,12 @@
   tags:
     - clt
 
+- name: Accept xcodebuild license
+  become: True
+  changed_when: False
+  failed_when: False
+  command: xcodebuild -license accept
+  tags:
+    - clt
+
 ...
