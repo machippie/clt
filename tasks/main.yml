@@ -24,23 +24,51 @@
   tags:
     - clt
 
-- name: Parse software updates
+- name: Parse softwareupdate old
   changed_when: False
-  failed_when: clt_updates.rc != 0 or clt_updates.stdout | length == 0
-  register: clt_updates
-  when: clt_pkgutil.rc != 0 or not clt_directory.stat.exists
+  failed_when: clt_updates_old.rc != 0 or clt_updates_old.stdout | length == 0
+  register: clt_updates_old
+  when:
+    - clt_pkgutil.rc != 0 or not clt_directory.stat.exists
+    - ansible_distribution_version is version("10.15", "<")
   shell: |
     softwareupdate -l | grep -B 1 -E 'Command Line Tools' | awk -F'*' '/^ +\*/ {print $2}' | sed 's/^ *//' | grep -iE '[0-9|.]' | sort | tail -n1
+  tags:
+    - clt
+
+- name: Update detection old
+  set_fact:
+    clt_updates: "{{ clt_updates_old }}"
+  when: clt_updates_old is not skipped
+  tags:
+    - clt
+
+- name: Parse softwareupdate new
+  changed_when: False
+  failed_when: clt_updates_new.rc != 0 or clt_updates_new.stdout | length == 0
+  register: clt_updates_new
+  when:
+    - clt_pkgutil.rc != 0 or not clt_directory.stat.exists
+    - ansible_distribution_version is version("10.15", ">=")
+  shell: |
+    softwareupdate -l | grep -B 1 -E 'Command Line Tools' | awk -F'*' '/^\*/ {print $2}' | sed 's/^ Label: //' | grep -iE '[0-9|.]' | sort | tail -n1
+  tags:
+    - clt
+
+- name: Update detection new
+  set_fact:
+    clt_updates: "{{ clt_updates_new }}"
+  when: clt_updates_new is not skipped
   tags:
     - clt
 
 - name: Install required package
   notify:
     - Cleanup clt
-  failed_when: clt_install.rc != 0 or 'Error installing updates.' in clt_install.stdout
+  failed_when: clt_install.rc != 0 or "Error installing updates." in clt_install.stdout
   register: clt_install
   when: clt_pkgutil.rc != 0 or not clt_directory.stat.exists
-  command: softwareupdate -i '{{ clt_updates.stdout }}'
+  command: softwareupdate -i "{{ clt_updates.stdout }}"
   tags:
     - clt
 
